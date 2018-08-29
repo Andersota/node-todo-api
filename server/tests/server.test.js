@@ -12,7 +12,9 @@ const todos = [
 	},
 	{
 		_id : new ObjectID(),
-		text : 'Second Todo'
+		text : 'Second Todo',
+		completed : true,
+		completedAt : new Date().getTime()
 	}
 ];
 
@@ -28,17 +30,16 @@ describe( 'POST /todos', () => {
 
 	it( 'Should create a new Todo', ( done ) => {
 
-		var text = 'Test Todo text';
+		var newTodo = {
+			text : 'Test Todo text'
+		};
 
 		request( app )
 			.post( '/todos' )
-			.send( {
-				text : text
-			})
+			.send( newTodo )
 			.expect( 200 )
 			.expect( ( res ) => {
-
-				expect( res.body.text ).toBe( text );
+				expect( res.body.todo.text ).toBe( newTodo.text );
 			})
 			.end( ( err, res ) => {
 
@@ -47,9 +48,9 @@ describe( 'POST /todos', () => {
 					return;
 				}
 
-				Todo.find({ text : text }).then( ( todos ) => {
+				Todo.find({ text : newTodo.text }).then( ( todos ) => {
 					expect( todos.length ).toBe( 1 );
-					expect( todos[0].text ).toBe( text );
+					expect( todos[0].text ).toBe( newTodo.text );
 					done();
 				}).catch( ( e ) => {
 					done( e );
@@ -177,5 +178,42 @@ describe( 'DELETE /todos/:id', () => {
 			.delete( '/todos/' + id )
 			.expect( 404 )
 			.end( done );
+	});
+});
+
+describe( 'PATCH /todos/:id', () => {
+
+	it( 'should update a todo with id', ( done ) => {
+
+		var id = todos[0]._id.toHexString();
+
+		var newTodo = {
+			text : 'Test Todo update',
+			completed : true
+		};
+
+		request( app )
+			.patch( '/todos/' + id )
+			.send( newTodo )
+			.expect( 200 )
+			.expect( ( res ) => {
+				expect( res.body.todo.text ).toBe( newTodo.text );
+				expect( res.body.todo.completed ).toBe( true );
+				expect( res.body.todo.completedAt ).toBeTruthy();
+			})
+			.end( ( err, res ) => {
+
+				if( err ){
+					done( err );
+					return;
+				}
+
+				Todo.findById( id ).then( ( todo ) => {
+					expect( todo.text ).toBe( newTodo.text );
+					done();
+				}).catch( ( e ) => {
+					done( e );
+				})
+			});
 	});
 });
