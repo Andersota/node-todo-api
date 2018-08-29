@@ -143,7 +143,20 @@ describe( 'DELETE /todos/:id', () => {
 			.expect( ( res ) => {
 				expect( res.body.todo.text ).toBe( todos[0].text );
 			})
-			.end( done );
+			.end( ( err, res ) => {
+				
+				if( err ){
+					return done( err );
+				}
+
+				Todo.findById( id ).then( ( todo ) => {
+
+					expect( todo ).toBeFalsy();
+					done();
+				}).catch( ( e ) => {
+					done( e );
+				});
+			});
 	});
 
 	it( 'should return 404 if todo with id not found', ( done ) => {
