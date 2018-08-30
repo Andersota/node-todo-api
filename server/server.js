@@ -18,9 +18,9 @@ app.use( bodyParser.json() );
 
 app.post( '/todos', ( req, res ) => {
 
-	var todo = new Todo( {
-		text : req.body.text
-	});
+	var body = _.pick( req.body, [ 'text' ]);
+
+	var todo = new Todo( body );
 
 	todo.save().then( ( todo ) => {
 		
@@ -127,6 +127,64 @@ app.patch( '/todos/:id', ( req, res ) => {
 
 		res.send( {
 			todo : todo
+		});
+
+	}).catch( ( e ) => {
+		res.status( 400 ).send();
+	});
+});
+
+app.post( '/users', ( req, res ) => {
+
+	var body = _.pick( req.body, [ 'email', 'password' ]);
+
+	var user = new User( body );
+
+	user.save().then( () => {
+
+		return user.generateAuthToken();
+	}).then( ( token ) => {
+		
+		res.header( 'x-auth', token ).send( {
+			user : user
+		});
+
+	}).catch( ( e ) => {
+		res.status( 400 ).send( e );
+	});
+});
+
+app.get( '/users', ( req, res ) => {
+
+	User.find().then( ( users ) => {
+
+		res.send( {
+			users : users
+		});
+
+	}).catch( ( e ) => {
+		res.status( 400 ).send( e );
+	});
+});
+
+app.get( '/users/:id', ( req, res ) => {
+
+	var id = req.params.id;
+
+	if( ! ObjectID.isValid( id ) ){
+		res.status( 404 ).send();
+		return;
+	}
+
+	User.findById( id ).then( ( user ) => {
+
+		if( ! user ){
+			res.status( 404 ).send();
+			return;
+		}
+
+		res.send( {
+			user : user
 		});
 
 	}).catch( ( e ) => {
