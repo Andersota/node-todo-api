@@ -3,26 +3,184 @@ const request = require( 'supertest' );
 const {ObjectID} = require( 'mongodb' );
 
 const {app} = require( './../server.js' );
+const {User} = require( './../models/user.js' );
 const {Todo} = require( './../models/todo.js' );
 
-const todos = [
-	{
-		_id : new ObjectID(),
-		text : 'First Todo'
-	},
-	{
-		_id : new ObjectID(),
-		text : 'Second Todo',
-		completed : true,
-		completedAt : new Date().getTime()
-	}
-];
+const { users, todos, loadUsers, loadTodos } = require( './seed.js' );
 
-beforeEach( ( done ) => {
-	Todo.remove({}).then( () => {
-		return Todo.insertMany( todos );
-	}).then( () => {
-		done();
+beforeEach( loadUsers );
+beforeEach( loadTodos );
+
+
+describe( 'GET /users', () => {
+
+	it( 'Should get all users', ( done ) => {
+		
+		request( app )
+			.get( '/users' )
+			.expect( 200 )
+			.expect( ( res ) => {
+				expect( res.body.users.length ).toBe( 2 );
+			})
+			.end( done );
+	});
+});
+
+describe( 'GET /users/me', () => {
+
+	it( 'Should return user if authenticated', ( done ) => {
+
+		request( app )
+			.get( '/users/me' )
+			.set( 'x-auth', users[0].tokens[0].token )
+			.expect( 200 )
+			.expect( ( res ) => {
+				expect( res.body.user._id ).toBe( users[0]._id.toHexString() );
+				expect( res.body.user.email ).toBe( users[0].email );
+			})
+			.end( done );
+	});
+
+	it( 'Should return 401 if not authenticated', ( done ) => {
+		
+		request( app )
+			.get( '/users/me' )
+			.expect( 401 )
+			.expect( ( res ) => {
+				expect( res.body ).toEqual( {} );
+			})
+			.end( done );
+	});
+});
+
+describe( 'POST /users', () => {
+
+	it( 'Should create a new User', ( done ) => {
+
+		var email = 'user3@email.com';
+		var password = 'user1password';
+
+		request( app )
+			.post( '/users' )
+			.send( { 
+				email : email,
+				password : password 
+			})
+			.expect( 200 )
+			.expect( ( res ) => {
+				expect( res.headers['x-auth'] ).toBeTruthy();
+				expect( res.body.user._id ).toBeTruthy();
+				expect( res.body.user.email ).toBe( email );
+			})
+			.end( ( err ) => {
+				
+				if( err ){
+					done( err );
+				}
+
+				User.findOne( {
+					email : email
+				}).then( ( user ) => {
+					expect( user ).toBeTruthy();
+					done();
+				});
+			});
+	});
+
+	it( 'Should return 400 when email invalid', ( done ) => {
+		
+		var email = 'user3';
+		var password = 'user1password';
+
+		request( app )
+			.post( '/users' )
+			.send( { 
+				email : email,
+				password : password 
+			})
+			.expect( 400 )
+			.end( done );
+	});
+
+	it( 'Should return 400 when password invalid', ( done ) => {
+		
+		var email = 'user3@email.com';
+		var password = '1';
+
+		request( app )
+			.post( '/users' )
+			.send( { 
+				email : email,
+				password : password 
+			})
+			.expect( 400 )
+			.end( done );
+	});
+
+	it( 'Should return 400 if email in use', ( done ) => {
+		
+		var email = users[0].email;
+		var password = 'user1password';
+
+		request( app )
+			.post( '/users' )
+			.send( { 
+				email : email,
+				password : password 
+			})
+			.expect( 400 )
+			.end( done );
+	});
+});
+
+
+describe( 'GET /todos', () => {
+
+	it( 'Should get all todos', ( done ) => {
+		
+		request( app )
+			.get( '/todos' )
+			.expect( 200 )
+			.expect( ( res ) => {
+				expect( res.body.todos.length ).toBe( 2 );
+			})
+			.end( done );
+	});
+});
+
+describe( 'GET /todos/:id', () => {
+
+	it( 'Should get a todo with id', ( done ) => {
+
+		var id = todos[0]._id.toHexString();
+
+		request( app )
+			.get( '/todos/' + id )
+			.expect( 200 )
+			.expect( ( res ) => {
+				expect( res.body.todo.text ).toBe( todos[0].text );
+			})
+			.end( done );
+	});
+
+	it( 'Should return 404 if todo with id not found', ( done ) => {
+
+		var id = new ObjectID().toHexString();
+
+		request( app )
+			.get( '/todos/' + id )
+			.expect( 404 )
+			.end( done );
+	});
+
+	it( 'Should return 404 if id not valid', ( done ) => {
+
+		var id = 123;
+
+		request( app )
+			.get( '/todos/' + id )
+			.expect( 404 )
+			.end( done );
 	});
 });
 
@@ -79,111 +237,11 @@ describe( 'POST /todos', () => {
 				})
 			});
 	});
-
-});
-
-describe( 'GET /todos', () => {
-
-	it( 'should get all todos', ( done ) => {
-		
-		request( app )
-			.get( '/todos' )
-			.expect( 200 )
-			.expect( ( res ) => {
-				expect( res.body.todos.length ).toBe( 2 );
-			})
-			.end( done );
-	});
-});
-
-describe( 'GET /todos/:id', () => {
-
-	it( 'should get a todo with id', ( done ) => {
-
-		var id = todos[0]._id.toHexString();
-
-		request( app )
-			.get( '/todos/' + id )
-			.expect( 200 )
-			.expect( ( res ) => {
-				expect( res.body.todo.text ).toBe( todos[0].text );
-			})
-			.end( done );
-	});
-
-	it( 'should return 404 if todo with id not found', ( done ) => {
-
-		var id = new ObjectID().toHexString();
-
-		request( app )
-			.get( '/todos/' + id )
-			.expect( 404 )
-			.end( done );
-	});
-
-	it( 'should return 404 if id not valid', ( done ) => {
-
-		var id = 123;
-
-		request( app )
-			.get( '/todos/' + id )
-			.expect( 404 )
-			.end( done );
-	});
-});
-
-describe( 'DELETE /todos/:id', () => {
-
-	it( 'should remove a todo with id', ( done ) => {
-
-		var id = todos[0]._id.toHexString();
-
-		request( app )
-			.delete( '/todos/' + id )
-			.expect( 200 )
-			.expect( ( res ) => {
-				expect( res.body.todo.text ).toBe( todos[0].text );
-			})
-			.end( ( err, res ) => {
-				
-				if( err ){
-					return done( err );
-				}
-
-				Todo.findById( id ).then( ( todo ) => {
-
-					expect( todo ).toBeFalsy();
-					done();
-				}).catch( ( e ) => {
-					done( e );
-				});
-			});
-	});
-
-	it( 'should return 404 if todo with id not found', ( done ) => {
-
-		var id = new ObjectID().toHexString();
-
-		request( app )
-			.delete( '/todos/' + id )
-			.expect( 404 )
-			.end( done );
-	});
-
-	it( 'should return 404 if id not valid', ( done ) => {
-
-		var id = 123;
-
-		request( app )
-			.delete( '/todos/' + id )
-			.expect( 404 )
-			.end( done );
-	});
 });
 
 describe( 'PATCH /todos/:id', () => {
 
-	it( 'should update a todo with id', ( done ) => {
+	it( 'Should update a todo with id', ( done ) => {
 
 		var id = todos[0]._id.toHexString();
 
@@ -215,5 +273,54 @@ describe( 'PATCH /todos/:id', () => {
 					done( e );
 				})
 			});
+	});
+});
+
+describe( 'DELETE /todos/:id', () => {
+
+	it( 'Should remove a todo with id', ( done ) => {
+
+		var id = todos[0]._id.toHexString();
+
+		request( app )
+			.delete( '/todos/' + id )
+			.expect( 200 )
+			.expect( ( res ) => {
+				expect( res.body.todo.text ).toBe( todos[0].text );
+			})
+			.end( ( err, res ) => {
+				
+				if( err ){
+					return done( err );
+				}
+
+				Todo.findById( id ).then( ( todo ) => {
+
+					expect( todo ).toBeFalsy();
+					done();
+				}).catch( ( e ) => {
+					done( e );
+				});
+			});
+	});
+
+	it( 'Should return 404 if todo with id not found', ( done ) => {
+
+		var id = new ObjectID().toHexString();
+
+		request( app )
+			.delete( '/todos/' + id )
+			.expect( 404 )
+			.end( done );
+	});
+
+	it( 'Should return 404 if id not valid', ( done ) => {
+
+		var id = 123;
+
+		request( app )
+			.delete( '/todos/' + id )
+			.expect( 404 )
+			.end( done );
 	});
 });
