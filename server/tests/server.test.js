@@ -58,7 +58,7 @@ describe( 'POST /users', () => {
 	it( 'Should create a new User', ( done ) => {
 
 		var email = 'user3@email.com';
-		var password = 'user1password';
+		var password = 'user3password';
 
 		request( app )
 			.post( '/users' )
@@ -83,6 +83,8 @@ describe( 'POST /users', () => {
 				}).then( ( user ) => {
 					expect( user ).toBeTruthy();
 					done();
+				}).catch( ( e ) => {
+					done( e );
 				});
 			});
 	});
@@ -90,7 +92,7 @@ describe( 'POST /users', () => {
 	it( 'Should return 400 when email invalid', ( done ) => {
 		
 		var email = 'user3';
-		var password = 'user1password';
+		var password = 'user3password';
 
 		request( app )
 			.post( '/users' )
@@ -120,7 +122,7 @@ describe( 'POST /users', () => {
 	it( 'Should return 400 if email in use', ( done ) => {
 		
 		var email = users[0].email;
-		var password = 'user1password';
+		var password = users[0].password;
 
 		request( app )
 			.post( '/users' )
@@ -130,6 +132,61 @@ describe( 'POST /users', () => {
 			})
 			.expect( 400 )
 			.end( done );
+	});
+});
+
+describe( 'POST /users/login', () => {
+
+	it( 'Should log User in and return auth token', ( done ) => {
+
+		var email = users[1].email;
+		var password = users[1].password;
+
+		request( app )
+			.post( '/users/login' )
+			.send( { 
+				email : email,
+				password : password 
+			})
+			.expect( 200 )
+			.expect( ( res ) => {
+				expect( res.headers['x-auth'] ).toBeTruthy();
+			})
+			.end( ( err, res ) => {
+				
+				if( err ){
+					done( err );
+				}
+
+				User.findById( res.body.user._id ).then( ( user ) => {
+					expect( user.toObject().tokens[0] ).toMatchObject({
+					    access : 'auth',
+					    token : res.headers['x-auth']
+					});
+					done();
+				}).catch( ( e ) => {
+					done( e );
+				});
+			});
+	});
+
+	it( 'Should reject invalid login', ( done ) => {
+
+		var email = 'user3@email.com';
+		var password = 'user3password';
+
+		request( app )
+			.post( '/users/login' )
+			.send( { 
+				email : email,
+				password : password 
+			})
+			.expect( 400 )
+			.expect( ( res ) => {
+				expect( res.headers['x-auth'] ).toBeFalsy();
+			})
+			.end( done );
+
 	});
 });
 
@@ -212,7 +269,7 @@ describe( 'POST /todos', () => {
 					done();
 				}).catch( ( e ) => {
 					done( e );
-				})
+				});
 			});
 	});
 
@@ -234,7 +291,7 @@ describe( 'POST /todos', () => {
 					done();
 				}).catch( ( e ) => {
 					done( e );
-				})
+				});
 			});
 	});
 });
@@ -271,7 +328,7 @@ describe( 'PATCH /todos/:id', () => {
 					done();
 				}).catch( ( e ) => {
 					done( e );
-				})
+				});
 			});
 	});
 });
