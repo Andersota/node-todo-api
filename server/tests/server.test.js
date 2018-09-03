@@ -11,7 +11,7 @@ const { users, todos, loadUsers, loadTodos } = require( './seed.js' );
 beforeEach( loadUsers );
 beforeEach( loadTodos );
 
-
+// Users
 describe( 'GET /users', () => {
 
 	it( 'Should get all users', ( done ) => {
@@ -51,6 +51,10 @@ describe( 'GET /users/me', () => {
 			})
 			.end( done );
 	});
+});
+
+describe( 'GET /users/:id', () => {
+
 });
 
 describe( 'POST /users', () => {
@@ -190,7 +194,32 @@ describe( 'POST /users/login', () => {
 	});
 });
 
+describe( 'DELETE /users/me/token', () => {
 
+	it( 'Should remove auth token', ( done ) => {
+
+		request( app )
+			.delete( '/users/me/token' )
+			.set( 'x-auth', users[0].tokens[0].token )
+			.expect( 200 )
+			.end( ( err, res ) => {
+				
+				if( err ){
+					done( err );
+				}
+
+				User.findById( users[0]._id ).then( ( user ) => {
+					expect( user.toObject().tokens.length ).toBe( 0 );
+					done();
+				}).catch( ( e ) => {
+					done( e );
+				});
+			});
+	});
+
+});
+
+// Todos
 describe( 'GET /todos', () => {
 
 	it( 'Should get all todos', ( done ) => {
