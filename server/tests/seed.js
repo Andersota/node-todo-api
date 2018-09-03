@@ -5,12 +5,17 @@ const jwt = require( 'jsonwebtoken' );
 const {User} = require( './../models/user.js' );
 const {Todo} = require( './../models/todo.js' );
 
-const user1Id = new ObjectID();
-const user2Id = new ObjectID();
-
 var access = 'auth';
+
+const user1Id = new ObjectID();
 var user1token = jwt.sign( {
 	_id : user1Id.toHexString(),
+	access : access
+}, 'Salt String' ).toString();
+
+const user2Id = new ObjectID();
+var user2token = jwt.sign( {
+	_id : user2Id.toHexString(),
 	access : access
 }, 'Salt String' ).toString();
 
@@ -29,18 +34,26 @@ const users = [
 	{
 		_id : user2Id,
 		email : 'user2@email.com',
-		password : 'user2password'
+		password : 'user2password',
+		tokens : [
+			{
+				access : access,
+				token : user2token
+			}
+		]
 	}
 ];
 
 const todos = [
 	{
 		_id : new ObjectID(),
-		text : 'First Todo'
+		text : 'First Todo',
+		_creator : user1Id
 	},
 	{
 		_id : new ObjectID(),
 		text : 'Second Todo',
+		_creator : user2Id,
 		completed : true,
 		completedAt : new Date().getTime()
 	}
