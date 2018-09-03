@@ -11,13 +11,13 @@ const user1Id = new ObjectID();
 var user1token = jwt.sign( {
 	_id : user1Id.toHexString(),
 	access : access
-}, 'Salt String' ).toString();
+}, process.env.JWT_SECRET ).toString();
 
 const user2Id = new ObjectID();
 var user2token = jwt.sign( {
 	_id : user2Id.toHexString(),
 	access : access
-}, 'Salt String' ).toString();
+}, process.env.JWT_SECRET ).toString();
 
 const users = [
 	{
